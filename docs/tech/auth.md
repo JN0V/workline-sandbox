@@ -1,7 +1,7 @@
 ---
 type: reference
 sources: [src/auth/token.go]
-checked: HEAD
+checked: b26bc96
 ---
 # Authentication
 

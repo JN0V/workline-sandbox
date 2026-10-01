@@ -1,7 +1,7 @@
 ---
 type: concept
 sources: [docs/tech/auth.md#token-refresh]
-checked: HEAD
+checked: b26bc96
 ---
 # Staying signed in
 
