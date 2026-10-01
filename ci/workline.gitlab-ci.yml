@@ -1,0 +1,114 @@
+# workline on GitLab CI — include it from .gitlab-ci.yml:
+#   include: {local: ci/workline.gitlab-ci.yml}
+# Not yet tried on a live GitLab instance: neither the agent nor the token.
+#
+# The project's routing decides what runs on a merge request (.workline/config.yaml,
+# `routing:`; by default the committer, then the documentalist).
+#
+# Two jobs, two trust zones (docs/research/server-side.md):
+#   judge  runs the line, no write token, stops before applying (--no-apply).
+#          With the variable CLAUDE_CODE_OAUTH_TOKEN (`claude setup-token`, a
+#          Claude subscription; masked), Claude judges; without it, the docs
+#          are listed for a person. GitLab gives a variable to the whole job,
+#          installs included, where GitHub gives it to one step.
+#   The findings show in the merge request's Code Quality report, on every tier.
+#   apply  holds WORKLINE_GITLAB_TOKEN (a project access token with the `api`
+#          and `write_repository` scopes) and no AI key. A doc fix is committed
+#          to the merge request's branch (--push-to-merge-request).
+#
+# Both variables are masked, and NOT protected: GitLab gives a protected
+# variable only to protected branches, never to a merge request's. Anyone who
+# may push a branch can then read them from a pipeline they change — people
+# who may already write to the repository. A fork's merge request runs in the
+# fork, which has neither: it is judged without an agent, and nothing is
+# applied or commented.
+variables:
+  WORKLINE_VERSION: main            # pin a tag or commit once releases exist
+  WORKLINE_RUNS_DIR: $CI_PROJECT_DIR/.workline-runs
+
+.workline:
+  image: golang:1.27
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  before_script:
+    - go install github.com/JN0V/workline/cmd/workline@$WORKLINE_VERSION
+    - go install github.com/zricethezav/gitleaks/v8@v8.30.1   # secrets, for the committer
+    - export PATH=$PATH:$(go env GOPATH)/bin
+    - git fetch --quiet origin $CI_MERGE_REQUEST_DIFF_BASE_SHA || true
+
+workline:judge:
+  extends: .workline
+  stage: test
+  script:
+    - ai=none
+    - >
+      if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+      apt-get update -qq && apt-get install -y -qq nodejs npm > /dev/null &&
+      npm install -g --silent @anthropic-ai/claude-code && ai=claude; fi
+    - status=0
+    - >
+      workline route merge-request --ai "$ai" --no-apply --push-to-merge-request
+      --forge gitlab --target merge-request:$CI_MERGE_REQUEST_IID
+      --input range=$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA
+      --code-quality gl-code-quality.json --json > line.json || status=$?
+    - exit $status
+  artifacts:
+    when: always                    # steps that passed before one blocked are still applied
+    paths: [.workline-runs/, line.json]
+    reports: {codequality: gl-code-quality.json}
+    expire_in: 1 day
+
+workline:apply:
+  extends: .workline
+  stage: deploy
+  needs: [workline:judge]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $WORKLINE_GITLAB_TOKEN
+      when: always
+  script:
+    - go install gitlab.com/gitlab-org/cli/cmd/glab@latest
+    - export GITLAB_TOKEN=$WORKLINE_GITLAB_TOKEN
+    - git config user.name "workline"
+    - git config user.email "workline@noreply.$CI_SERVER_HOST"
+    - git remote set-url origin "https://oauth2:${WORKLINE_GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+    - workline apply --line line.json
+
+# Gardening: in a scheduled pipeline (CI/CD → Schedules, weekly), the project's
+# `schedule` line runs (by default the documentalist); each task it takes up
+# becomes a merge request of its own, on a branch workline/<role>/<task>,
+# updated when the task runs again, and no more are proposed while
+# max-open-merge-requests of them wait (ADR-0006). WORKLINE_GITLAB_TOKEN also
+# needs the `write_repository` scope, to push the branch. Without AI, only
+# derived blocks are regenerated.
+.workline:garden:
+  image: golang:1.27
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $WORKLINE_GITLAB_TOKEN
+  before_script:
+    - go install github.com/JN0V/workline/cmd/workline@$WORKLINE_VERSION
+    - go install gitlab.com/gitlab-org/cli/cmd/glab@latest
+    - export PATH=$PATH:$(go env GOPATH)/bin
+    - git checkout -q -B "$CI_COMMIT_REF_NAME"   # GitLab runs on a detached HEAD
+    - export GITLAB_TOKEN=$WORKLINE_GITLAB_TOKEN
+
+workline:garden:judge:
+  extends: .workline:garden
+  stage: test
+  script:
+    - status=0
+    - workline route schedule --ai none --no-apply --forge gitlab --open-merge-request --json > line.json || status=$?
+    - exit $status
+  artifacts:
+    when: always
+    paths: [.workline-runs/, line.json]
+    expire_in: 1 day
+
+workline:garden:apply:
+  extends: .workline:garden
+  stage: deploy
+  needs: [workline:garden:judge]
+  script:
+    - git config user.name "workline"
+    - git config user.email "workline@noreply.$CI_SERVER_HOST"
+    - git remote set-url origin "https://oauth2:${WORKLINE_GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+    - workline apply --line line.json

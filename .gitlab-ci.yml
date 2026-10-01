@@ -1,0 +1,2 @@
+stages: [test, deploy]
+include: {local: ci/workline.gitlab-ci.yml}
