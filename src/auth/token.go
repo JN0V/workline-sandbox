@@ -1,4 +1,4 @@
 package auth
 
-// Tokens last one hour.
-const TokenTTL = 3600
+// Tokens last two hours.
+const TokenTTL = 7200
