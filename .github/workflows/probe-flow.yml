@@ -1,0 +1,10 @@
+name: probe flow
+on:
+  schedule: [{cron: "*/5 * * * *"}]
+  workflow_dispatch:
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "event=${{ github.event_name }} ran=$(date -u +%FT%TZ)"
