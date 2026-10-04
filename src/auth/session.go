@@ -10,7 +10,7 @@ func Expired(issued, now time.Time) bool {
 // Remaining is how long a token issued at issued still lasts at now; zero
 // once it has expired.
 func Remaining(issued, now time.Time) time.Duration {
-	left := TokenTTL - now.Sub(issued)
+	left := TokenTTL*time.Second - now.Sub(issued)
 	if left < 0 {
 		return 0
 	}
