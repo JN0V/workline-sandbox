@@ -6,4 +6,7 @@ import "time"
 const IdleTimeout = 30 * time.Minute
 
 // Idle says whether a session last used at last is signed out at now.
-func Idle(last, now time.Time) bool { return now.Sub(last) > IdleTimeout }
+func Idle(last, now time.Time) bool {
+	idleFor := now.Sub(last)
+	return idleFor >= IdleTimeout
+}
