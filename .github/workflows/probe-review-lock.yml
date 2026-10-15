@@ -1,0 +1,15 @@
+# Try of workline#375: workline.yml's two concurrency groups, as the
+# template sets them. A push cancels the run before it (the workflow's
+# group); the job waits while probe-review-lock-apply.yml's apply holds
+# the review's group.
+name: probe review lock
+on:
+  pull_request: {types: [opened, synchronize]}
+permissions: {}
+concurrency: {group: "probe-judge-${{ github.event.pull_request.number }}", cancel-in-progress: true}
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    concurrency: {group: "probe-review-${{ github.event.pull_request.number }}", cancel-in-progress: false}
+    steps:
+      - run: echo "judge head=${{ github.event.pull_request.head.sha }} started=$(date -u +%FT%TZ)"; sleep 20; echo "ended=$(date -u +%FT%TZ)"
