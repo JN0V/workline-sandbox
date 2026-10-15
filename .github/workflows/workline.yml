@@ -136,7 +136,16 @@ jobs:
 
       - uses: github/codeql-action/upload-sarif@v4
         if: '!cancelled() && github.event.pull_request.head.repo.full_name == github.repository'
-        with: {sarif_file: workline.sarif, category: workline}
+        with: {sarif_file: workline.sarif, category: workline, ref: "refs/heads/${{ github.head_ref }}", sha: "${{ github.event.pull_request.head.sha }}"}
+
+      # try of workline#412: the findings as the check's annotations
+      - name: Findings as annotations
+        if: '!cancelled()'
+        run: |
+          jq -r '.runs[0].results[] | "::notice file=\(.locations[0].physicalLocation.artifactLocation.uri),line=\(.locations[0].physicalLocation.region.startLine),title=\(.ruleId)::\(.message.text | gsub("\n"; "%0A"))"' workline.sarif
+      - name: Twelve notices, for the cap
+        if: '!cancelled()'
+        run: for i in $(seq 1 12); do echo "::notice file=docs/tech/idle-size.md,line=$i,title=cap $i::notice $i of 12"; done
 
       # An agent missing or out of quota (3) is said, not taken for the
       # change's fault: a person judges what it would have (ADR-0010).
