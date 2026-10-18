@@ -16,6 +16,9 @@ func Clean(dir string) {
 	os.Remove(dir + "/session.lock")
 	os.Remove(dir + "/session.tmp")
 	os.Remove(dir + "/session.log")
-	os.Remove(dir + "/session.bak")
-	os.Remove(dir + "/session.bak.1")
+	for _, f := range []string{"/session.bak", "/session.bak.1"} {
+		if err := os.Remove(dir + f); err != nil && !os.IsNotExist(err) {
+			panic(err)
+		}
+	}
 }
