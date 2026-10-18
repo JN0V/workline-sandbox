@@ -1,0 +1,11 @@
+# The try of JN0V/workline#202 step 3: a golangci-lint gate on merge
+# requests, over the lint debt of src/auth/clean.go.
+routing:
+  events: {merge-request: ["gate:lint", committer, documentalist]}
+gates:
+  lint:
+    checks:
+      - id: golangci-lint
+        run: golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 --output.text.path=stdout --output.sarif.path={out}/lint.sarif ./...
+        output: sarif
+        max: {error: 0}
