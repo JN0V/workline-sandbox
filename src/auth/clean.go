@@ -7,4 +7,5 @@ func Clean(dir string) {
 	os.Remove(dir + "/session.lock")
 	os.Remove(dir + "/session.tmp")
 	os.Remove(dir + "/session.log")
+	os.Remove(dir + "/session.cache")
 }
