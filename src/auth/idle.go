@@ -7,3 +7,6 @@ const IdleTimeout = 30 * time.Minute
 
 // Idle says whether a session last used at last is signed out at now.
 func Idle(last, now time.Time) bool { return now.Sub(last) > IdleTimeout }
+
+// Hello says hello
+func Hello() string { return "hello" }
