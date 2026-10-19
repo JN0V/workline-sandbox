@@ -1,6 +1,6 @@
 ---
 type: concept
-sources: [docs/tech/auth.md#token-refresh]
+sources: [docs/tech/tokens.md#token-refresh]
 checked: b26bc96
 ---
 # Staying signed in
