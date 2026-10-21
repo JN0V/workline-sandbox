@@ -10,3 +10,6 @@ func Idle(last, now time.Time) bool { return now.Sub(last) > IdleTimeout }
 
 // Hello says hello
 func Hello() string { return "hello" }
+
+// Bye says goodbye.
+func Bye() string { return "bye" }
