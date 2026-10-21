@@ -1,5 +1,5 @@
 #!/bin/sh
-# The try of workline's ADR-0051 step 4: an agent that adds one line to
+# The try of workline's ADR-0051 step 4: an agent that marks
 # docs/tech/tokens.md and records `judged` at the commit the task names.
 # Its patch must go in a comment, never on the branch.
 prompt=$(cat)
@@ -10,13 +10,11 @@ cat <<YAML
 - patch: |
     --- a/docs/tech/tokens.md
     +++ b/docs/tech/tokens.md
-    @@ -3,3 +3,4 @@
+    @@ -3,3 +3,5 @@
      sources: $src
      checked: $old
     +judged: $at
+    +verified: agent:documentalist
      ---
-    @@ -9,1 +10,2 @@
-     Access tokens last one hour.
-    +The lifetime is TokenTTL, in seconds.
 - note: "The lifetime's value changed: a person confirms the doc's sentence."
 YAML
