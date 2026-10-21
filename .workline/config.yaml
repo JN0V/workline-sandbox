@@ -1,0 +1,3 @@
+# A try of the release holds: the committer alone on a merge request.
+routing:
+  events: {merge-request: [committer]}
