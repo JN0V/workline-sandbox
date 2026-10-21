@@ -10,3 +10,4 @@ func Idle(last, now time.Time) bool { return now.Sub(last) > IdleTimeout }
 
 // Hello says hello
 func Hello() string { return "hello" }
+// Trust: a record is read only as workline left it.
