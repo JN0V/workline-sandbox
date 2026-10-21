@@ -1,0 +1,3 @@
+# The try of workline's squash title: the committer alone on a pull request.
+routing:
+  events: {merge-request: [committer]}
