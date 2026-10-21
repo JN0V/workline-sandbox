@@ -1,0 +1,4 @@
+roles:
+  reviewer:
+    settings:
+      ai-findings: {correctness: block}
