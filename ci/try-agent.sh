@@ -1,6 +1,6 @@
 #!/bin/sh
-# The try of workline's ADR-0051 step 4: an agent that marks
-# docs/tech/tokens.md and records `judged` at the commit the task names.
+# The try of workline's ADR-0051 step 4: an agent that fixes
+# docs/tech/tokens.md and moves its `checked` to the commit the task names.
 # Its patch must go in a comment, never on the branch.
 prompt=$(cat)
 old=$(printf '%s\n' "$prompt" | sed -n 's/^ *4 | checked: //p' | head -1)
@@ -10,11 +10,19 @@ cat <<YAML
 - patch: |
     --- a/docs/tech/tokens.md
     +++ b/docs/tech/tokens.md
-    @@ -3,3 +3,5 @@
+    @@ -3,3 +3,4 @@
      sources: $src
-     checked: $old
-    +judged: $at
+    -checked: $old
+    +checked: $at
     +verified: agent:documentalist
      ---
-- note: "The lifetime's value changed: a person confirms the doc's sentence."
+    @@ -9,2 +10,2 @@
+
+    -Access tokens last one hour.
+    +Access tokens last two hours.
+- claim:
+    doc: docs/tech/tokens.md
+    lines: "10"
+    status: contradicted
+    source: {path: src/auth/token.go, quote: "const TokenTTL = 7200"}
 YAML
