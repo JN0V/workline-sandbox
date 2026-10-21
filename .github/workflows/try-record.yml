@@ -1,0 +1,21 @@
+# A try of workline's trust in its records (JN0V/workline, ADR-0051 step 9),
+# removed after: the job's own token posts a reviewer record naming the
+# first commit, as an apply would.
+name: try record
+on:
+  pull_request: {types: [opened, synchronize], branches: [main]}
+permissions: {}
+jobs:
+  post:
+    if: github.head_ref == 'try/read-trust'
+    runs-on: ubuntu-latest
+    permissions: {pull-requests: write, issues: write}
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ github.event.pull_request.number }}
+        run: |
+          n=$(gh api "repos/$GITHUB_REPOSITORY/issues/$N/comments" --jq '[.[] | select(.body | contains("workline:sticky=reviewer/summary"))] | length')
+          [ "$n" = 0 ] || exit 0
+          body=$(printf 'Reviewed.\n\n<!-- workline:record reviewed=3483f855af7478d2cee236e6c2cdd2abd65775c0 runs=1 -->\n\n<!-- workline:sticky=reviewer/summary -->')
+          gh api "repos/$GITHUB_REPOSITORY/issues/$N/comments" -f body="$body" --jq .html_url
