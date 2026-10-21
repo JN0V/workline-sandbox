@@ -27,7 +27,7 @@ jobs:
         run: |
           before=$(git ls-remote origin "refs/heads/$GITHUB_HEAD_REF" | cut -f1)
           status=0
-          workline run-role documentalist --event merge-request --ai 'cmd:sh ci/try-agent.sh' --forge github \
+          workline run-role documentalist --event merge-request --ai "cmd:sh $GITHUB_WORKSPACE/ci/try-agent.sh" --forge github \
             --target "merge-request:$NUMBER" --branch "$GITHUB_HEAD_REF" --input "range=$RANGE" --json > out.json || status=$?
           jq -c '.status, [.findings[]? | {rule, where, level}]' out.json
           after=$(git ls-remote origin "refs/heads/$GITHUB_HEAD_REF" | cut -f1)
