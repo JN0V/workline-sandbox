@@ -21,4 +21,9 @@ jobs:
           RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
           NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          "$RUNNER_TEMP/bin/workline" route merge-request --ai none --forge github --target "merge-request:$NUMBER" --input "range=$RANGE"
+          status=0
+          "$RUNNER_TEMP/bin/workline" route merge-request --ai none --forge github --target "merge-request:$NUMBER" --input "range=$RANGE" \
+            --summary workline-summary.md || status=$?
+          [ ! -s workline-summary.md ] || cat workline-summary.md
+          [ ! -s workline-summary.md ] || cat workline-summary.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
