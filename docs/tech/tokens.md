@@ -7,4 +7,4 @@ checked: 96bed9e
 
 ## Token refresh
 
-Access tokens last one hour.
+Access tokens last two hours.
