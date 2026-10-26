@@ -1,7 +1,7 @@
 ---
 type: reference
 sources: [src/auth/token.go]
-checked: 2222222
+checked: 3333333
 ---
 # Authentication
 
