@@ -1,9 +1,0 @@
-name: try-640
-on: {push: {branches: [main]}}
-permissions: {}
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sleep 90; [ ! -f try-640-red ]
