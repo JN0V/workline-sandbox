@@ -1,5 +1,0 @@
-# The try of the tester's step 4 (JN0V/workline): removed after.
-roles:
-  tester: {settings: {test-command: "sh run-tests.sh {report}"}}
-routing:
-  events: {schedule: [tester]}
