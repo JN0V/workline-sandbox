@@ -1,0 +1,44 @@
+name: race probe
+'on':
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+permissions: {}
+concurrency:
+  group: probe-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+    - run: sleep 15
+    - name: The pull request, a draft or not
+      id: pr
+      if: github.event_name == 'pull_request'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EVENT_DRAFT: ${{ github.event.pull_request.draft }}
+        NUMBER: ${{ github.event.pull_request.number }}
+      run: 'draft=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$NUMBER" --jq .draft) || draft=
+
+        case "$draft" in true|false) ;; *) draft=$EVENT_DRAFT; echo "::warning title=workline::the pull request''s draft state could not be read, the event''s taken: $EVENT_DRAFT" ;; esac
+
+        echo "draft=$draft" >> "$GITHUB_OUTPUT"
+
+        '
+    - name: decide
+      env:
+        ACTION: ${{ github.event.action }}
+        EVENT_DRAFT: ${{ github.event.pull_request.draft }}
+        DRAFT: ${{ steps.pr.outputs.draft }}
+      run: 'ready=; case "$ACTION:$EVENT_DRAFT:$DRAFT" in opened:*:false|ready_for_review:*|*:true:false) ready=1 ;; esac
+
+        old=; case "$ACTION:$EVENT_DRAFT" in opened:false|ready_for_review:*) old=1 ;; esac
+
+        echo "PROBE action=$ACTION event_draft=$EVENT_DRAFT draft_now=$DRAFT ready=[$ready] old_ready=[$old]"'
