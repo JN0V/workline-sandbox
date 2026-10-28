@@ -1,0 +1,153 @@
+# workline gardening on GitHub Actions — copy to .github/workflows/workline-gardening.yml.
+#
+# On a schedule, the project's `schedule` line runs (by default the
+# documentalist; add the product owner to keep the backlog, docs/ci.md):
+# each task it takes up becomes a pull request of its own, on a branch
+# workline/<role>/<task>, updated when the task runs again, and no more are
+# proposed while max-open-merge-requests of them wait (ADR-0006).
+# The review is on those pull requests; nothing is merged here (ADR-0011).
+# The tester, when the line lists it, writes a ready issue's tests, one
+# issue a run, opened as a Draft (ADR-0055): install your test runner in
+# judge, where it proves them red.
+# And a release's dry run: what would hold the release if it were cut now,
+# said in the default branch's issue (dry-run below). The release never
+# waits for the docs (ADR-0051).
+#
+# Two jobs, two trust zones, as for pull requests (workline.yml):
+#   judge  runs the line. With the secret CLAUDE_CODE_OAUTH_TOKEN (`claude
+#          setup-token`, a Claude subscription), Claude judges, in the one
+#          step that needs the token; without it, only derived blocks are
+#          regenerated. It reads the open pull requests, and writes nothing.
+#          The subscription's limits are shared with its owner: run it at
+#          night, and keep ai-max-calls and max-open-merge-requests low.
+#   apply  holds the write token and no AI key: it commits, pushes the
+#          branch, and opens or updates the pull request; then it rebuilds
+#          on main those main moved under, or closes them, saying why, when
+#          nothing is left to merge (`workline follow --gardening`,
+#          ADR-0034). With a GitHub App
+#          (variable WORKLINE_APP_ID, secret WORKLINE_APP_PRIVATE_KEY in the
+#          environment workline-app, which only the default branch may use), the
+#          pull request runs your checks by itself; with the job's own token,
+#          GitHub waits for someone to approve them, and the repository must
+#          let Actions create pull requests (Settings → Actions → General).
+name: try tester schedule
+on:
+  # Sundays, 18:07 UTC: the docs pull request lands before Monday's
+  # workday, though GitHub may start a run hours late (ADR-0051); nightly
+  # ("17 2 * * *") to catch up a backlog. Off the hour: GitHub may drop a
+  # run scheduled at its start, when busiest.
+  workflow_dispatch:
+permissions: {}
+
+env:
+  WORKLINE_VERSION: v0.46.0          # a release of workline: update it to take a newer one (x-release-please-version)
+  # the job summary (--summary) needs the first release after v0.16.0
+  WORKLINE_RUNS_DIR: ${{ github.workspace }}/.workline-runs
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    # issues: the product owner, when the schedule line runs it, reads them.
+    permissions: {contents: read, pull-requests: read, issues: read}
+    env: {HAS_CLAUDE: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}"}
+    outputs:
+      proposed: ${{ steps.line.outputs.proposed }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      # The engine at the version pinned above, and the tools its roles use,
+      # from their releases, checksums verified: seconds, not a build.
+      - name: workline
+        run: |
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"; cd "$RUNNER_TEMP"
+          get() { curl -fsSLO "$1/$2" && curl -fsSL "$1/$3" | grep " $2\$" | sha256sum -c - && tar -xzf "$2" -C "$bin" "$4"; }
+          GOBIN="$bin" go install github.com/JN0V/workline/cmd/workline@66aa1714ad9fc956d117a96798408d3e1e13b4ba
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/workline" version
+      - name: Claude, when the repository gives its token
+        if: env.HAS_CLAUDE == 'true'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: The schedule line (proposals only)
+        id: line
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKLINE_APP_ID: ${{ vars.WORKLINE_APP_ID }}   # the App whose comments keep the records a role reads back (ADR-0051)
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          ai="cmd:sh $GITHUB_WORKSPACE/ci/try-tester-agent.sh"
+          status=0
+          workline route schedule --ai "$ai" --no-apply --forge github --open-merge-request --summary workline-summary.md --json > line.json || status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "proposed=$(jq '(.pending // []) | length > 0' line.json)" >> "$GITHUB_OUTPUT"
+          [ ! -s workline-summary.md ] || cat workline-summary.md
+          [ ! -s workline-summary.md ] || cat workline-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.line.outputs.proposed == 'true'
+        with: {name: workline-runs, path: "line.json\n.workline-runs", include-hidden-files: true}
+
+      - name: Verdict
+        run: |
+          status=${{ steps.line.outputs.status }}
+          if [ "$status" = 3 ]; then
+            echo "::warning title=workline::the agent could not be reached; the docs are listed in the summary, for a person"
+            exit 0
+          fi
+          exit "$status"
+
+  # Every night, proposed or not: it also tends the pull requests gardening
+  # opened before (ADR-0034, amended).
+  apply:
+    needs: judge
+    if: always()
+    runs-on: ubuntu-latest
+    environment: workline-app       # the App's key: the default branch only (ADR-0044)
+    # issues: the product owner's acts (comments, labels, closings,
+    # reactions) on each issue.
+    permissions: {contents: write, pull-requests: write, issues: write}
+    steps:
+      - id: app
+        if: vars.WORKLINE_APP_ID != ''
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.WORKLINE_APP_ID }}
+          private-key: ${{ secrets.WORKLINE_APP_PRIVATE_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token || github.token }}
+      # The engine at the version pinned above, and the tools its roles use,
+      # from their releases, checksums verified: seconds, not a build.
+      - name: workline
+        run: |
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"; cd "$RUNNER_TEMP"
+          get() { curl -fsSLO "$1/$2" && curl -fsSL "$1/$3" | grep " $2\$" | sha256sum -c - && tar -xzf "$2" -C "$bin" "$4"; }
+          GOBIN="$bin" go install github.com/JN0V/workline/cmd/workline@66aa1714ad9fc956d117a96798408d3e1e13b4ba
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/workline" version
+      - uses: actions/download-artifact@v4
+        if: needs.judge.outputs.proposed == 'true'
+        with: {name: workline-runs}
+      - env:
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          APP: ${{ steps.app.outputs.app-slug }}
+          WORKLINE_APP: ${{ steps.app.outputs.app-slug }}   # workline's own account: the records it trusts
+          PROPOSED: ${{ needs.judge.outputs.proposed }}
+        run: |
+          if [ -n "$APP" ]; then
+            git config user.name "$APP[bot]"
+            git config user.email "$(gh api "/users/$APP%5Bbot%5D" --jq .id)+$APP[bot]@users.noreply.github.com"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          fi
+          status=0
+          [ "$PROPOSED" != true ] || workline apply --line line.json --summary workline-summary.md || status=$?
+          # Its pull requests main moved under: rebuilt on it, or closed when
+          # nothing is left to merge; one a person committed to is theirs.
+          # Needs the first release after v0.24.0.
+          workline follow --gardening --base "$GITHUB_REF_NAME" --forge github --summary workline-summary.md || status=$?
+          [ ! -s workline-summary.md ] || cat workline-summary.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+

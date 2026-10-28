@@ -54,7 +54,7 @@ jobs:
           bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"; cd "$RUNNER_TEMP"
           get() { curl -fsSLO "$1/$2" && curl -fsSL "$1/$3" | grep " $2\$" | sha256sum -c - && tar -xzf "$2" -C "$bin" "$4"; }
           # the try: the engine of the pull request's commit, not a release
-          GOBIN="$bin" go install github.com/JN0V/workline/cmd/workline@b7ab509316364a69f1f8b5323f4f850f80df371f
+          GOBIN="$bin" go install github.com/JN0V/workline/cmd/workline@66aa1714ad9fc956d117a96798408d3e1e13b4ba
           echo "$bin" >> "$GITHUB_PATH"
           "$bin/workline" version
       # Your test runner here: the tester proves a rewrite red on the base
@@ -67,7 +67,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          ai=none   # the try: no agent
+          ai="cmd:sh $GITHUB_WORKSPACE/ci/try-tester-agent.sh"
           pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
           [ -n "$pr" ] || { echo "no open pull request from $BRANCH: nothing to answer"; exit 0; }
           # The Draft's tip, where the test objected to is read and a
@@ -113,7 +113,7 @@ jobs:
           bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"; cd "$RUNNER_TEMP"
           get() { curl -fsSLO "$1/$2" && curl -fsSL "$1/$3" | grep " $2\$" | sha256sum -c - && tar -xzf "$2" -C "$bin" "$4"; }
           # the try: the engine of the pull request's commit, not a release
-          GOBIN="$bin" go install github.com/JN0V/workline/cmd/workline@b7ab509316364a69f1f8b5323f4f850f80df371f
+          GOBIN="$bin" go install github.com/JN0V/workline/cmd/workline@66aa1714ad9fc956d117a96798408d3e1e13b4ba
           echo "$bin" >> "$GITHUB_PATH"
           "$bin/workline" version
       - uses: actions/download-artifact@v4
