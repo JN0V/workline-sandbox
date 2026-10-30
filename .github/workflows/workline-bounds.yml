@@ -1,0 +1,7 @@
+name: workline bounds
+on: pull_request
+jobs:
+  bounds:
+    name: workline bounds
+    runs-on: ubuntu-latest
+    steps: [{run: "exit 0"}]
