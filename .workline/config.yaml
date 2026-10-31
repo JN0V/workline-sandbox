@@ -1,11 +1,5 @@
+# A try of workline ADR-0059 (removed after): the line of states.
 forge: github
-roles:
-  tester:
-    settings:
-      test-command: "/home/seb/.local/go/bin/go run gotest.tools/gotestsum@v1.12.3 --junitfile {report} ./..."
-gates:
-  lint:
-    checks:
-      - {id: gofmt, run: "test -z \"$(/home/seb/.local/go/bin/gofmt -l .)\"", output: exit}
 routing:
-  events: {issue: [tester, developer], merge-request: ["gate:lint"]}
+  events: {issue: [tester, developer]}
+  max-hops: 1
