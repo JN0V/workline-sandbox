@@ -1,5 +1,0 @@
-# A try of workline ADR-0059 (removed after): the line of states.
-forge: github
-routing:
-  events: {issue: [tester, developer]}
-  max-hops: 1
