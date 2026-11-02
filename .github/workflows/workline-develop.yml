@@ -82,7 +82,7 @@ jobs:
           if [ -n "$last" ] && ago=$(( $(date -u +%s) - $(date -u -d "$last" +%s) )) && [ "$ago" -lt 300 ]; then
             echo "the last reconcile ended at $last, $((ago / 60)) min ago: not due" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0
           fi
-          if gh workflow run "$wf" --ref "$GITHUB_REF_NAME" -f reconcile=true; then
+          if gh workflow run "$wf" -R "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f reconcile=true; then
             echo "the last reconcile ended at ${last:-no time found}: the reconciler's run started" | tee -a "$GITHUB_STEP_SUMMARY"
           else
             echo "::warning title=workline::the reconciler's run not started: the next event or the schedule asks again"
