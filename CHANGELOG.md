@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/JN0V/workline-sandbox/compare/v1.1.0-rc.1...v1.1.0) (2026-11-02)
+
+
+### Miscellaneous Chores
+
+* release 1.1.0 ([cb44474](https://github.com/JN0V/workline-sandbox/commit/cb44474a845b2618ed9a925d96870abee36f8e95))
+
 ## [1.1.0-rc.1](https://github.com/JN0V/workline-sandbox/compare/v1.0.0...v1.1.0-rc.1) (2026-11-02)
 
 
